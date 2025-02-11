@@ -1,167 +1,163 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿//TODO remove all useless using directives
 using MonitorImplementation.HoareMonitor;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace MonitorTest
 {
-    [TestClass]
-    public class BoundedBufferTest
+  [TestClass]
+  public class BoundedBufferTest
+  {
+    [TestMethod]
+    public void TestAddItem()
     {
-        [TestMethod]
-        public void TestAddItem()
-        {
-            // Prepare
-            BoundedBuffer buffer = new BoundedBuffer();
-            int item = 0;
+      // Prepare
+      BoundedBuffer buffer = new BoundedBuffer();
+      int item = 0;
 
-            // Act
-            Thread threadAdd = new Thread(() =>
-            {
-                buffer.AddItem(2);
-                item = buffer.RemoveItem();
-            });
+      // Act
+      Thread threadAdd = new Thread(() =>
+      {
+        buffer.AddItem(2);
+        item = buffer.RemoveItem();
+      });
 
-            threadAdd.Start();
-            threadAdd.Join();
+      threadAdd.Start();
+      threadAdd.Join();
 
-            // Test
-            Assert.AreEqual(2, item);
+      // Test
+      Assert.AreEqual(2, item);
 
-            // Dispose
-            buffer.Dispose();
-        }
-
-        [TestMethod]
-        public void TestRemoveItem()
-        {
-            // Prepare
-            BoundedBuffer buffer = new BoundedBuffer();
-            int item = 0;
-
-            Thread threadRemove = new Thread(() =>
-            {
-                item = buffer.RemoveItem();
-            });
-
-            Thread threadAdd = new Thread(() =>
-            {
-                buffer.AddItem(2);
-            });
-
-            // Act
-            threadRemove.Start();
-            threadAdd.Start();
-
-            // Test
-            Assert.AreEqual(2, item);
-
-            // Dispose
-            buffer.Dispose();
-        }
-
-        [TestMethod]
-        public void TestBufferIsFull()
-        {
-            // Prepare
-            BoundedBuffer buffer = new BoundedBuffer();
-            const int count = 10;
-            const int sleepTime = 100;
-            bool isTrue = true;
-
-            // Act
-            Thread threadAdd = new Thread(() =>
-            {
-                for (int i = 0; i < count + 1; i++)
-                {
-                    Thread.Sleep(sleepTime);
-                    buffer.AddItem(count);
-                }
-            });
-
-            threadAdd.Start();
-            threadAdd.Join();
-            if (buffer.RemoveItem() != 9)
-            {
-                isTrue = false;
-            }
-
-            // Test
-            Assert.IsTrue(isTrue);
-
-            // Dispose
-            buffer.Dispose();
-        }
-
-        private class BoundedBuffer : HoareMonitorImplementation, IDisposable
-        {
-            private readonly ISignal? nonempty;
-            private readonly ISignal? nonfull;
-            private const int N = 10;
-            private readonly int[] buffer = new int[N];
-            private int lastPointer = 0;
-            private int count = 0;
-            private bool isfull = false;
-
-            public BoundedBuffer()
-            {
-                nonempty = CreateSignal();
-                nonfull = CreateSignal();
-            }
-
-            internal void AddItem(int x)
-            {
-                enterMonitorSection();
-                try
-                {
-                    if (count == N)
-                    {
-                        isfull |= true;
-                        nonfull.Wait();
-                    }
-
-                    buffer[lastPointer] = x;
-                    lastPointer = (lastPointer + 1) % N;
-                    count++;
-
-                    nonempty.Send();
-                }
-                finally
-                {
-                    exitHoareMonitorSection();
-                }
-            }
-
-            internal int RemoveItem()
-            {
-                enterMonitorSection();
-                try
-                {
-                    if (count == 0)
-                    {
-                        nonempty.Wait();
-                    }
-
-                    int x = buffer[(lastPointer - count + N) % N];
-                    count--;
-
-                    nonfull.Send();
-                    return x;
-                }
-                finally
-                {
-                    exitHoareMonitorSection();
-                }
-            }
-
-            public new void Dispose()
-            {
-                base.Dispose();
-            }
-        }
+      // Dispose
+      buffer.Dispose();
     }
+
+    [TestMethod]
+    public void TestRemoveItem()
+    {
+      // Prepare
+      BoundedBuffer buffer = new BoundedBuffer();
+      int item = 0;
+
+      Thread threadRemove = new Thread(() =>
+      {
+        item = buffer.RemoveItem();
+      });
+
+      Thread threadAdd = new Thread(() =>
+      {
+        buffer.AddItem(2);
+      });
+
+      // Act
+      threadRemove.Start();
+      threadAdd.Start();
+      //TODO before testing we must wait for finishing the threads
+      // Test
+      Assert.AreEqual(2, item);
+
+      // Dispose
+      buffer.Dispose();
+    }
+
+    [TestMethod]
+    public void TestBufferIsFull() //TODO the test must be revised
+    {
+      // Prepare
+      BoundedBuffer buffer = new BoundedBuffer();
+      const int count = 10;
+      const int sleepTime = 100; //TODO must be much greater than the buffer size
+      bool isTrue = true;
+
+      // Act
+      Thread threadAdd = new Thread(() =>
+      {
+        for (int i = 0; i < count + 1; i++)
+        {
+          Thread.Sleep(sleepTime); //TODO buffer full condition requires that the producer is much faster than the consumer - the wrong location of the Sleep method
+          buffer.AddItem(count); //TODO it must be recognized as producer
+        }
+      });
+
+      threadAdd.Start();
+      threadAdd.Join(); //TODO it prevents concurrent adding and removing items
+      if (buffer.RemoveItem() != 9)
+      {
+        isTrue = false;
+      }
+
+      // Test // //TODO isFull must be tested
+      Assert.IsTrue(isTrue);
+
+      // Dispose
+      buffer.Dispose();
+    }
+
+    // TODO Are we using aspect programming here? If so, how?
+    // TODO the BoundedBuffer must be generic declaration
+    private class BoundedBuffer : HoareMonitorImplementation, IDisposable
+    {
+      private readonly ISignal? nonempty;
+      private readonly ISignal? nonfull;
+      private const int N = 10;
+      private readonly int[] buffer = new int[N];
+      private int lastPointer = 0;
+      private int count = 0;
+      private bool isfull = false;  //TODO isfull is never used
+
+      public BoundedBuffer()
+      {
+        nonempty = CreateSignal();
+        nonfull = CreateSignal();
+      }
+
+      internal void AddItem(int x)
+      {
+        enterMonitorSection(); //Are we using aspect programming here? If so, how?
+        try
+        {
+          if (count == N)
+          {
+            isfull |= true;  //TODO isfull is never used ? As far as I remember it is to be used for testing a scenario where the producer is faster than consument
+            nonfull.Wait();
+          }
+
+          buffer[lastPointer] = x;
+          lastPointer = (lastPointer + 1) % N;
+          count++;
+
+          nonempty.Send();
+        }
+        finally
+        {
+          exitHoareMonitorSection();
+        }
+      }
+
+      internal int RemoveItem()
+      {
+        enterMonitorSection();
+        try
+        {
+          if (count == 0)
+          {
+            nonempty.Wait();
+          }
+
+          int x = buffer[(lastPointer - count + N) % N];
+          count--;
+
+          nonfull.Send();
+          return x;
+        }
+        finally
+        {
+          exitHoareMonitorSection();
+        }
+      }
+
+      public new void Dispose()
+      {
+        base.Dispose();
+      }
+    }
+  }
 }

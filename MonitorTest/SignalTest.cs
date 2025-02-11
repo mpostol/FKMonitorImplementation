@@ -29,13 +29,13 @@ namespace MonitorTest
             // Act
             thread.Start();
             Thread.Sleep(100);
-            thread.Join();
+            thread.Join();// TODO if there is no send we should wait here forever
 
             // Test
             Assert.IsFalse(isFalse);
 
             // Dispose
-            signalTestClass.Dispose();
+            signalTestClass.Dispose();  //TODO replace explicit Dispose invocation by the using instruction
         }
 
         [TestMethod]
