@@ -50,7 +50,7 @@ namespace MonitorTest
       // Act
       threadRemove.Start();
       threadAdd.Start();
-      //TODO before testing we must wait for finishing the threads
+      // TODO before testing we must wait for finishing the threads
       // Test
       Assert.AreEqual(2, item);
 
@@ -59,12 +59,12 @@ namespace MonitorTest
     }
 
     [TestMethod]
-    public void TestBufferIsFull() //TODO the test must be revised
+    public void TestBufferIsEmpty() //TODO the test must be revised
     {
       // Prepare
       BoundedBuffer buffer = new BoundedBuffer();
-      const int count = 10;
-      const int sleepTime = 100; //TODO must be much greater than the buffer size
+      const int count = 10; // TODO must be much greater than the buffer size
+      const int sleepTime = 100; 
       bool isTrue = true;
 
       // Act
@@ -85,7 +85,7 @@ namespace MonitorTest
       }
 
       // Test // //TODO isFull must be tested
-      Assert.IsTrue(isTrue);
+      Assert.IsTrue(buffer.isEmpty);
 
       // Dispose
       buffer.Dispose();
@@ -101,7 +101,8 @@ namespace MonitorTest
       private readonly int[] buffer = new int[N];
       private int lastPointer = 0;
       private int count = 0;
-      private bool isfull = false;  //TODO isfull is never used
+      internal bool isfull = false;  //TODO isfull is never used
+      internal bool isEmpty = false;
 
       public BoundedBuffer()
       {
@@ -139,6 +140,7 @@ namespace MonitorTest
         {
           if (count == 0)
           {
+            isEmpty |= true; 
             nonempty.Wait();
           }
 
